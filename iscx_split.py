@@ -38,6 +38,8 @@ class ISCXSplit:
     and 37460 represent attack cases (checked 20/10/2016).
     """
 
+    _XML_DOCTYPE = '<?xml version="1.0" encoding="UTF-8"?>'
+
     def __init__(self, folds, input_dir, files):
         """Initialise.
 
@@ -62,9 +64,8 @@ class ISCXSplit:
         testing sets to be written to.
         """
         self._load_data()
-        s_kfold = self._calc_kfold(self._labels)
-        # TODO Create the testing and training sets using the indices and write the raw xml data into new files.
-        pass
+        kfold = self._calc_kfold(self._labels)
+        self._save_sets(kfold, output_dir)
 
     def _load_data(self):
         """Read in the ISCX 2012 DDoS dataset and store the data and
@@ -121,10 +122,107 @@ class ISCXSplit:
         elements belong in each fold.
         """
         print("Calculating {0} stratified folds...".format(self._folds))
-        s_kfold = StratifiedKFold(labels, n_folds=self._folds,
-                                  shuffle=True, random_state=RAND_SEED)
+        kfold = StratifiedKFold(labels, n_folds=self._folds,
+                                shuffle=True, random_state=RAND_SEED)
         print("\tFold calculation complete.")
-        return s_kfold
+        return kfold
+
+    def _save_sets(self, kfold, output_dir):
+        """Save training and testing set files using k-fold information.
+
+        :param kfold: Object indicating what elements should be in
+        what set.
+        :param output_dir: Parent directory for the resulting sets.
+        """
+        # Create the parent directory if it doesn't already exist.
+        if not os.path.exists(output_dir):
+            print("Creating parent directory for the training and "
+                  "testing sets...")
+            os.mkdir(output_dir)
+        else:
+            print("Parent directory for the training and testing sets "
+                  "already exists. Continuing...")
+        # Create directories for storing the different training and
+        # testing sets.
+        train_dir = os.path.join(output_dir, "train")
+        if not os.path.exists(train_dir):
+            print("Creating directory for the training set...")
+            os.mkdir(train_dir)
+        else:
+            print("Parent directory for the training set already "
+                  "exists. Continuing...")
+        test_dir = os.path.join(output_dir, "test")
+        if not os.path.exists(test_dir):
+            print("Creating directory for the test set...")
+            os.mkdir(test_dir)
+        else:
+            print("Parent directory for the test set already exists. "
+                  "Continuing...")
+        # Loop through all training and testing sets and create
+        # matching files.
+        fold = 1
+        for train, test in kfold:
+            train_set = {"training_set_{0}".format(fold): map(
+                self._raw_data.__getitem__, test)}
+            test_set = {"testing_set_{0}".format(fold): map(
+                self._raw_data.__getitem__, train)}
+            train_file = os.path.join(train_dir,
+                                      "iscx2012ddos_training_set_fold_{0}".format(fold))
+            test_file = os.path.join(test_dir,
+                                      "iscx2012ddos_testing_set_fold_{0}".format(fold))
+            train_xml = self._serialise_to_xml(train_set)
+            test_xml = self._serialise_to_xml(test_set)
+            with open(train_file, mode="w") as t_file:
+                t_file.write(train_xml)
+            with open(test_file, mode="w") as t_file:
+                t_file.write(test_xml)
+            fold += 1
+
+    def _serialise_to_xml(self, raw_dict):
+        """Turn a dictionary into an XML string.
+
+        Adapted from code from https://gist.github.com/dolph/1792904.
+        Accessed 20/10/2016.
+
+        :param raw_dict: The dictionary to convert.
+        :return: String representation of the XML.
+        """
+        name = raw_dict.keys()[0]
+        root = etree.Element(name)
+        self._populate_element(root, raw_dict)
+        return "{0}\n{1}".format(self._XML_DOCTYPE, etree.tostring(
+            root, pretty_print=True))
+
+    def _populate_element(self, element, d):
+        """Populates an etree with the given dictionary.
+
+        Adapted from code from https://gist.github.com/dolph/1792904.
+        Accessed 20/10/2016.
+
+        :param element: XML element to append to.
+        :param d: The dictionary to operate on.
+        :return: An etree encoded XML object.
+        """
+        for k, v in d.iteritems():
+            if type(v) is dict:
+                # serialize the child dictionary
+                child = etree.Element(k)
+                self._populate_element(child, v)
+                element.append(child)
+            elif type(v) is list:
+                # serialize the child list
+                if k[-1] == 's':
+                    name = k[:-1]
+                else:
+                    name = k
+
+                for item in v:
+                    child = etree.Element(name)
+                    self._populate_element(child, item)
+                    element.append(child)
+            else:
+                # add attributes to the current element
+                element.set(k, unicode(v))
 
 
 class TagValue:
@@ -138,8 +236,9 @@ if __name__ == "__main__":
     input_dir = "/vol/nerg-solar/bakkerjarr/Datasets/ISCXIDS2012" \
                     "/labeled_flows_xml/"
     files = ["TestbedTueJun15-1Flows.xml",
-             "TestbedTueJun15-2Flows.xml",
-             "TestbedTueJun15-3Flows.xml"]
-    output_dir = "ISCX2012DDoS_5-fold_sets"
+             # "TestbedTueJun15-2Flows.xml",
+              "TestbedTueJun15-3Flows.xml"]
+    working_dir = os.path.dirname(__file__)
+    output_dir = os.path.join(working_dir, "ISCX2012DDoS_5-fold_sets")
     split = ISCXSplit(folds, input_dir, files)
     split.create_sets(output_dir)
