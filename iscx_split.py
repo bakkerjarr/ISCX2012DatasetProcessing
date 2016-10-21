@@ -39,6 +39,8 @@ class ISCXSplit:
     """
 
     _XML_DOCTYPE = '<?xml version="1.0" encoding="UTF-8"?>'
+    _XMLNS = "ISCX 2012 DDoS dataset for Nmeta2 DDoS detection " \
+             "evaluation."
 
     def __init__(self, folds, input_dir, files):
         """Initialise.
@@ -167,14 +169,20 @@ class ISCXSplit:
             test_set = {"testing_set_{0}".format(fold): map(
                 self._raw_data.__getitem__, train)}
             train_file = os.path.join(train_dir,
-                                      "iscx2012ddos_training_set_fold_{0}".format(fold))
+                                      "iscx2012ddos_training_set_fold_"
+                                      "{0}.xml".format(fold))
             test_file = os.path.join(test_dir,
-                                      "iscx2012ddos_testing_set_fold_{0}".format(fold))
+                                      "iscx2012ddos_testing_set_fold_"
+                                      "{0}.xml".format(fold))
+            print("Serialising data for training set {0}.".format(fold))
             train_xml = self._serialise_to_xml(train_set)
-            test_xml = self._serialise_to_xml(test_set)
             with open(train_file, mode="w") as t_file:
+                print("Writing to file: {0}".format(train_file))
                 t_file.write(train_xml)
+            print("Serialising data for testing set {0}.".format(fold))
+            test_xml = self._serialise_to_xml(test_set)
             with open(test_file, mode="w") as t_file:
+                print("Writing to file: {0}".format(test_file))
                 t_file.write(test_xml)
             fold += 1
 
@@ -187,42 +195,29 @@ class ISCXSplit:
         :param raw_dict: The dictionary to convert.
         :return: String representation of the XML.
         """
-        name = raw_dict.keys()[0]
-        root = etree.Element(name)
+        root = etree.Element("dataroot", xmlns=self._XMLNS)
         self._populate_element(root, raw_dict)
         return "{0}\n{1}".format(self._XML_DOCTYPE, etree.tostring(
             root, pretty_print=True))
 
-    def _populate_element(self, element, d):
+    def _populate_element(self, root, d):
         """Populates an etree with the given dictionary.
 
         Adapted from code from https://gist.github.com/dolph/1792904.
         Accessed 20/10/2016.
 
-        :param element: XML element to append to.
-        :param d: The dictionary to operate on.
+        :param root: root XML element to append to.
+        :param d: Data to convert.
         :return: An etree encoded XML object.
         """
-        for k, v in d.iteritems():
-            if type(v) is dict:
-                # serialize the child dictionary
-                child = etree.Element(k)
-                self._populate_element(child, v)
-                element.append(child)
-            elif type(v) is list:
-                # serialize the child list
-                if k[-1] == 's':
-                    name = k[:-1]
-                else:
-                    name = k
-
-                for item in v:
-                    child = etree.Element(name)
-                    self._populate_element(child, item)
-                    element.append(child)
-            else:
-                # add attributes to the current element
-                element.set(k, unicode(v))
+        for tset_name, data in d.iteritems():
+            for elem in data:
+                child = etree.Element(tset_name)
+                for k, v in elem.iteritems():
+                    data = etree.Element(k)
+                    data.text = v
+                    child.append(data)
+                root.append(child)
 
 
 class TagValue:
