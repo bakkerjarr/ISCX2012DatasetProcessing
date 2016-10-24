@@ -39,8 +39,6 @@ class ISCXSplit:
     """
 
     _XML_DOCTYPE = '<?xml version="1.0" encoding="UTF-8"?>'
-    _XMLNS = "ISCX 2012 DDoS dataset for Nmeta2 DDoS detection " \
-             "evaluation."
 
     def __init__(self, folds, input_dir, files):
         """Initialise.
@@ -195,7 +193,7 @@ class ISCXSplit:
         :param raw_dict: The dictionary to convert.
         :return: String representation of the XML.
         """
-        root = etree.Element("dataroot", xmlns=self._XMLNS)
+        root = etree.Element("dataroot")
         self._populate_element(root, raw_dict)
         return "{0}\n{1}".format(self._XML_DOCTYPE, etree.tostring(
             root, pretty_print=True))
@@ -231,9 +229,9 @@ if __name__ == "__main__":
     input_dir = "/vol/nerg-solar/bakkerjarr/Datasets/ISCXIDS2012" \
                     "/labeled_flows_xml/"
     files = ["TestbedTueJun15-1Flows.xml",
-             # "TestbedTueJun15-2Flows.xml",
-              "TestbedTueJun15-3Flows.xml"]
+             "TestbedTueJun15-2Flows.xml",
+             "TestbedTueJun15-3Flows.xml"]
     working_dir = os.path.dirname(__file__)
-    output_dir = os.path.join(working_dir, "ISCX2012DDoS_5-fold_sets")
+    output_dir = os.path.join(working_dir, "ISCX2012DDoS_{0}-fold_sets".format(folds))
     split = ISCXSplit(folds, input_dir, files)
     split.create_sets(output_dir)
