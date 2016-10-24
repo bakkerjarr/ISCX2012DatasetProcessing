@@ -15,6 +15,7 @@
 from lxml import etree
 import dpkt
 import os
+import sys
 
 __author__ = "Jarrod N. Bakker"
 __status__ = "Development"
@@ -103,20 +104,22 @@ class ISCXSplit:
             print("Opening file: {0}".format(self._pcap))
             f = open(self._pcap)
             raw_pcap = dpkt.pcap.Reader(f)
-            for ts, buf in pcap:
+            for ts, buf in raw_pcap:
                 # Loop through packets in PCAP file
                 pass
                 # TODO: Does this packet match a flow in the raw data?
                 # TODO: Append packet data to new PCAP file.
         except:
-            print("ERROR reading from file: {0}".format(self._pcap))
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            print("ERROR reading from file: {0}.\n\tException: {1}, "
+                  "{2}, {3}".format(self._pcap, exc_type, exc_value,
+                                    exc_traceback))
 
     
 if __name__ == "__main__":
-    pcap_file = "/local/scratch/bakkerjarr/Datasets/ISCXIDS2012/" \
+    pcap_file = "/home/lg1/Documents/ISCX2012DDoS_5-fold/" \
                     "testbed-15jun.pcap"
-    input_dir = "/local/scratch/bakkerjarr/Datasets/" \
-                    "ISCX2012DDoS_5-fold_sets/test/"
+    input_dir = "/home/lg1/Documents/ISCX2012DDoS_5-fold/test"
     files = ["iscx2012ddos_testing_set_fold_1.xml"]#,
              # "iscx2012ddos_testing_set_fold_2.xml",
              # "iscx2012ddos_testing_set_fold_3.xml",
