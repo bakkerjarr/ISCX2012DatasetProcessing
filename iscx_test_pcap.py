@@ -102,7 +102,7 @@ class ISCXSplit:
         try:
             print("Opening file: {0}".format(self._pcap))
             f = open(self._pcap)
-            raw_pcap dpkt.pcap.Reader(f)
+            raw_pcap = dpkt.pcap.Reader(f)
             for ts, buf in pcap:
                 # Loop through packets in PCAP file
                 pass
