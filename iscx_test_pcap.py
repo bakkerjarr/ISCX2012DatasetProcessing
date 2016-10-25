@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from datetime import datetime
+from dpkt.ethernet import Ethernet
+from dpkt import pcap
 from lxml import etree
-import dpkt
 import os
+import socket
 import sys
 
 __author__ = "Jarrod N. Bakker"
@@ -22,6 +25,10 @@ __status__ = "Development"
 
 RAND_SEED = 99999999
 
+IP_PROTO_ICMP = dpkt.ip.IP_PROTO_ICMP
+IP_PROTO_IGMP = dpkt.ip.IP_PROTO_IGMP
+IP_PROTO_TCP = dpkt.ip.IP_PROTO_TCP
+IP_PROTO_UDP = dpkt.ip.IP_PROTO_UDP
 
 class ISCXSplit:
     """This class takes care of creating a PCAP file comprised of
@@ -103,17 +110,76 @@ class ISCXSplit:
         try:
             print("Opening file: {0}".format(self._pcap))
             f = open(self._pcap)
-            raw_pcap = dpkt.pcap.Reader(f)
+            raw_pcap = pcap.Reader(f)
             for ts, buf in raw_pcap:
                 # Loop through packets in PCAP file
-                pass
-                # TODO: Does this packet match a flow in the raw data?
-                # TODO: Append packet data to new PCAP file.
+                ip = Ethernet(buf).data  # decode from the network layer
+                ip_src = socket.inet_ntop(socket.AF_INET, ip.src)
+                ip_dst = socket.inet_ntop(socket.AF_INET, ip.dst)
+                ip_proto = ip.p
+                for flow in self:
+                    # Does this packet match a flow in the raw data?
+                    if ((ip_src == flow["source"] and ip_dst ==
+                        flow["destination"]) or (ip_src ==
+                        flow["destination"] and ip_dst == flow["source"])):
+                        if ip_proto == IP_PROTO_TCP and flow["protocolName"] == "tcp_ip":
+                            tcp = ip.data
+                            if self._check_port_num(tcp.sport, tcp.dport,
+                                                    flow["sourcePort"],
+                                                    flow["destinationPort"]):
+                                if self._check_timestamp(ts, flow["startDateTime"], flow["stopDateTime"]):
+                                    # TODO: Note that the packet needs to be copied
+                                    pass
+                        elif ip_proto == IP_PROTO_UDP and flow["protocolName"] == "udp_ip":
+                            udp = ip.data
+                            if self._check_port_num(udp.sport, udp.dport,
+                                                    flow["sourcePort"],
+                                                    flow["destinationPort"]):
+                                if self._check_timestamp(ts, flow["startDateTime"], flow["stopDateTime"]):
+                                    # TODO: Note that the packet needs to be copied
+                                    pass
+                        elif ip_proto == IP_PROTO_ICMP and flow["protocolName"] == "icmp_ip":
+                            if self._check_timestamp(ts, flow["startDateTime"], flow["stopDateTime"]):
+                                # TODO: Note that the packet needs to be copied
+                                pass
+                        elif ip_proto == IP_PROTO_IGMP and flow["protocolName"] == "igmp":
+                            if self._check_timestamp(ts, flow["startDateTime"], flow["stopDateTime"]):
+                                # TODO: Note that the packet needs to be copied
+                                pass
+                # TODO: The packet matches the flow. Append the packet data to the new PCAP file and move onto the next packet.
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             print("ERROR reading from file: {0}.\n\tException: {1}, "
                   "{2}, {3}".format(self._pcap, exc_type, exc_value,
                                     exc_traceback))
+
+    def _check_port_num(self, pkt_src, pkt_dst, flow_src, flow_dst):
+        """Do the port numbers of a packet match the port numbers of
+        either direction of a flow.
+
+        :param pkt_src: Source port number of a packet.
+        :param pkt_dst: Destination port number of a packet.
+        :param flow_src: Source port number of a flow.
+        :param flow_dst: Destination port number of a flow.
+        :return: True if there is a match, False otherwise.
+        """
+        return ((int(pkt_src)==int(flow_src) and int(pkt_dst)==int(flow_dst))
+                or (int(pkt_src)==int(flow_dst) and int(pkt_dst)==int(flow_src)))
+
+    def _check_timestamp(self, pkt_ts, flow_start, flow_stop):
+        """Check if the timestamp of a packet falls within the
+        duration of a flow's life.
+
+        :param pkt_ts: Timestamp of the packet to check.
+        :param flow_start: Start time of a flow.
+        :param flow_stop: Stop time of a flow.
+        :return: True if the packet's timestamp falls within the
+        duration of the flow. False otherwise.
+        """
+        dt_ts = datetime.fromtimestamp(pkt_ts)
+        dt_start = datetime.strptime(flow_start)
+        dt_stop = datetime.strptime(flow_stop)
+        return dt_start <= dt_ts <= dt_stop
 
     
 if __name__ == "__main__":
