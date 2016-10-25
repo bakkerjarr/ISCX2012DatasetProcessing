@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from datetime import datetime
-from dpkt.ethernet import Ethernet
+from dpkti import ethernet
 from dpkt import ip
 from dpkt import pcap
 from lxml import etree
@@ -26,10 +26,12 @@ __status__ = "Development"
 
 RAND_SEED = 99999999
 
+ETH_TYPE_IP = ethernet.ETH_TYPE_IP
 IP_PROTO_ICMP = ip.IP_PROTO_ICMP
 IP_PROTO_IGMP = ip.IP_PROTO_IGMP
 IP_PROTO_TCP = ip.IP_PROTO_TCP
 IP_PROTO_UDP = ip.IP_PROTO_UDP
+
 
 class ISCXSplit:
     """This class takes care of creating a PCAP file comprised of
@@ -112,14 +114,24 @@ class ISCXSplit:
             print("Opening file: {0}".format(self._pcap))
             f = open(self._pcap)
             raw_pcap = pcap.Reader(f)
+            pckt_num = 0
             for ts, buf in raw_pcap:
+                pckt_num += 1
+                if not pckt_num%1000:
+                    # Print every thousandth packets, just to monitor
+                    # progress.
+                    print("\tProcessing packet #{0}".format(pckt_num))
                 # Loop through packets in PCAP file
-                ip = Ethernet(buf).data  # decode from the network layer
+                eth = ethernet.Ethernet(buf)
+                if eth.type != ETH_TYPE_IP:
+                    # We are only interested in IP packets
+                    continue
+                ip = eth.data
                 ip_src = socket.inet_ntop(socket.AF_INET, ip.src)
                 ip_dst = socket.inet_ntop(socket.AF_INET, ip.dst)
                 ip_proto = ip.p
                 match = False
-                for flow in self:
+                for flow in self._raw_data:
                     # Does this packet match a flow in the raw data?
                     if ((ip_src == flow["source"] and ip_dst ==
                         flow["destination"]) or (ip_src ==
@@ -156,8 +168,9 @@ class ISCXSplit:
                     # The packet matches the flow. Append the packet data
                     # to the new PCAP file and move onto the next packet.
                     try:
+                        print("\tWrting packet to file: {0}".format(output_pcap))
                         f_out = open(output_pcap, "ab")
-                        pcap_out = pcap.Writer(f_out
+                        pcap_out = pcap.Writer(f_out)
                         pcap_out.writepkt(buf, ts=ts)
                     except:
                         exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -201,8 +214,8 @@ class ISCXSplit:
         duration of the flow. False otherwise.
         """
         dt_ts = datetime.fromtimestamp(pkt_ts)
-        dt_start = datetime.strptime(flow_start)
-        dt_stop = datetime.strptime(flow_stop)
+        dt_start = datetime.strptime(flow_start, "%Y-%m-%dT%H:%M:%S")
+        dt_stop = datetime.strptime(flow_stop, "%Y-%m-%dT%H:%M:%S")
         return dt_start <= dt_ts <= dt_stop
 
     
