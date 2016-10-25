@@ -14,6 +14,7 @@
 
 from datetime import datetime
 from dpkt.ethernet import Ethernet
+from dpkt import ip
 from dpkt import pcap
 from lxml import etree
 import os
@@ -25,10 +26,10 @@ __status__ = "Development"
 
 RAND_SEED = 99999999
 
-IP_PROTO_ICMP = dpkt.ip.IP_PROTO_ICMP
-IP_PROTO_IGMP = dpkt.ip.IP_PROTO_IGMP
-IP_PROTO_TCP = dpkt.ip.IP_PROTO_TCP
-IP_PROTO_UDP = dpkt.ip.IP_PROTO_UDP
+IP_PROTO_ICMP = ip.IP_PROTO_ICMP
+IP_PROTO_IGMP = ip.IP_PROTO_IGMP
+IP_PROTO_TCP = ip.IP_PROTO_TCP
+IP_PROTO_UDP = ip.IP_PROTO_UDP
 
 class ISCXSplit:
     """This class takes care of creating a PCAP file comprised of
@@ -117,6 +118,7 @@ class ISCXSplit:
                 ip_src = socket.inet_ntop(socket.AF_INET, ip.src)
                 ip_dst = socket.inet_ntop(socket.AF_INET, ip.dst)
                 ip_proto = ip.p
+                match = False
                 for flow in self:
                     # Does this packet match a flow in the raw data?
                     if ((ip_src == flow["source"] and ip_dst ==
@@ -128,30 +130,52 @@ class ISCXSplit:
                                                     flow["sourcePort"],
                                                     flow["destinationPort"]):
                                 if self._check_timestamp(ts, flow["startDateTime"], flow["stopDateTime"]):
-                                    # TODO: Note that the packet needs to be copied
-                                    pass
+                                    # We have found a match, stop looping
+                                    match = True
+                                    break
                         elif ip_proto == IP_PROTO_UDP and flow["protocolName"] == "udp_ip":
                             udp = ip.data
                             if self._check_port_num(udp.sport, udp.dport,
                                                     flow["sourcePort"],
                                                     flow["destinationPort"]):
                                 if self._check_timestamp(ts, flow["startDateTime"], flow["stopDateTime"]):
-                                    # TODO: Note that the packet needs to be copied
-                                    pass
+                                    # We have found a match, stop looping
+                                    match = True
+                                    break
                         elif ip_proto == IP_PROTO_ICMP and flow["protocolName"] == "icmp_ip":
                             if self._check_timestamp(ts, flow["startDateTime"], flow["stopDateTime"]):
-                                # TODO: Note that the packet needs to be copied
-                                pass
+                                # We have found a match, stop looping
+                                break
+                                match = True
                         elif ip_proto == IP_PROTO_IGMP and flow["protocolName"] == "igmp":
                             if self._check_timestamp(ts, flow["startDateTime"], flow["stopDateTime"]):
-                                # TODO: Note that the packet needs to be copied
-                                pass
-                # TODO: The packet matches the flow. Append the packet data to the new PCAP file and move onto the next packet.
+                                # We have found a match, stop looping
+                                match = True
+                                break
+                if match:
+                    # The packet matches the flow. Append the packet data
+                    # to the new PCAP file and move onto the next packet.
+                    try:
+                        f_out = open(output_pcap, "ab")
+                        pcap_out = pcap.Writer(f_out
+                        pcap_out.writepkt(buf, ts=ts)
+                    except:
+                        exc_type, exc_value, exc_traceback = sys.exc_info()
+                        print("ERROR writing to file: {0}.\n\t"
+                              "Exception: {1}, {2}, {3}".format(
+                                  output_pcap, exc_type, exc_value,
+                                  exc_traceback))
+                        sys.exit(1)
+                    finally:
+                        f_out.close
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             print("ERROR reading from file: {0}.\n\tException: {1}, "
                   "{2}, {3}".format(self._pcap, exc_type, exc_value,
                                     exc_traceback))
+            sys.exit(1)
+        finally:
+            f.close()
 
     def _check_port_num(self, pkt_src, pkt_dst, flow_src, flow_dst):
         """Do the port numbers of a packet match the port numbers of
