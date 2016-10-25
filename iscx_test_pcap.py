@@ -229,6 +229,6 @@ if __name__ == "__main__":
              # "iscx2012ddos_testing_set_fold_4.xml",
              # "iscx2012ddos_testing_set_fold_5.xml"]
     working_dir = os.path.dirname(__file__)
-    output_pcap = "iscx2012ddos_testing_pcap_fold_1.xml"
+    output_pcap = "iscx2012ddos_testing_pcap_fold_1.pcap"
     split = ISCXSplit(pcap_file, input_dir, files)
     split.create_pcap(output_pcap)
