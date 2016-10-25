@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from datetime import datetime
-from dpkti import ethernet
+from dpkt import ethernet
 from dpkt import ip
 from dpkt import pcap
 from lxml import etree
