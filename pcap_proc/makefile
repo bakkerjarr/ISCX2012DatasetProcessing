@@ -23,7 +23,7 @@ CC = gcc
 CFLAGS = -Wall $(shell xml2-config --cflags)
 LIBS = -lpcap $(shell xml2-config --libs)
 #DEPS = parseXML.h
-SRC = iscxFilter.c parseXML.c
+SRC = iscxFilter.c parseXML.c procPcap.c
 OBJ = $(SRC:.c=.o)
 OUT = iscxFilter
 
