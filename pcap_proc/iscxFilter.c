@@ -33,30 +33,37 @@
 *
 **/
 
-#include <libxml/parser.h>
-#include <stdio.h>
+#include "commonUtil.h"
 #include "parseXML.h"
+#include "procPcap.h"
 
-static const char *ARGS = "<XML file>";
-static const int NUM_ARGS = 1; // No. of extra args passed to the program
+static const char *ARGS = "<XML file> <input PCAP>";
+static const int NUM_ARGS = 2; // No. of extra args passed to the program
 
 int main (int argc, char * argv[]){
     
     /* Check command-line arugments. */
     if (argc != NUM_ARGS+1){
-        fprintf(stderr, "ERROR: Expected %d arguments, passed %d.\n", NUM_ARGS+1, argc);
-	fprintf(stdout, "Usage: %s %s\n", argv[0], ARGS);
+        fprintf(stderr, "Exiting: Expected %d arguments, passed %d.\n", NUM_ARGS+1, argc);
+        fprintf(stdout, "Usage: %s %s\n", argv[0], ARGS);
         return 1;
     }
     
-    char *filename = argv[1];
+    char *xml_filename = argv[1];
     xmlDoc *doc;
         
-    doc = parseXML(filename);
-    printXML(doc);
+    doc = parseXML(xml_filename);
+    //printXML(doc);
     
     // TODO: Process the PCAP file.
+    char *input_pcap = argv[2];
+    char *output_pcap = "NOTHING!\0";
     
+    if (!filterPcap(input_pcap, doc, output_pcap)){
+       fprintf(stderr, "Exiting: PCAP filtering failed.\n");
+       xmlFreeDoc(doc);
+       return 1;
+    }
         
     xmlFreeDoc(doc);
     return 0;

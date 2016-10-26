@@ -24,6 +24,7 @@
 *
 **/
 
+#include "commonUtil.h"
 #include "parseXML.h"
 
 static const char *XML_ENCODING = "UTF-8";
@@ -37,7 +38,8 @@ static void cleanDoc(xmlDoc *doc);
  * return: xmlDoc representing the loaded XML file.
  */
 xmlDoc * parseXML(char *filename){
-    xmlDoc *doc;    
+    xmlDoc *doc;
+    fprintf(stdout,"Reading XML data from file: %s\n", filename);
     doc = xmlReadFile(filename, XML_ENCODING, 0);
     cleanDoc(doc);
     return doc;

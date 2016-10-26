@@ -26,9 +26,7 @@
 #ifndef PARSEXML_H
 #define PARSEXML_H
 
-#include <libxml/parser.h>
-#include<stdio.h>
-
 xmlDoc * parseXML(char *filename);
 void printXML(xmlDoc *doc);
+
 #endif
