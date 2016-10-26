@@ -15,49 +15,11 @@
 *
 * Makefile for the ISCX 2012 DDoS PCAP file processing program.
 *
-* FILENAME : procPcap.c
+* FILENAME : procPcapL.c
 *
 * DESCRIPTION :
-*       Main file for the ISCX 2012 DDoS PCAP file processing program.
-*       XML files are provided as input describing what packets should be
-*       selected from a PCAP file. The selected packets are then written
-*       to a new PCAP file.
-*
-*       This file is responsible for setting up the environment for
-*       parsing/writing packets to/from file and reading XML data.
-*
-*       Usage of the resulting program is as follows:
-*           $ procPcap <XML file> <input PCAP> <output PCAP>
+*       This file uses XML data to filter PCAP data into a new PCAP file.
 * 
-* AUTHOR :  Jarrod N. Bakker 	START DATE :    25/10/2016
+* AUTHOR :  Jarrod N. Bakker    START DATE :    25/10/2016
 *
 **/
-
-#include <libxml/parser.h>
-#include <stdio.h>
-#include "parseXML.h"
-
-static const char *ARGS = "<XML file>";
-static const int NUM_ARGS = 1; // No. of extra args passed to the program
-
-int main (int argc, char * argv[]){
-    
-    /* Check command-line arugments. */
-    if (argc != NUM_ARGS+1){
-        fprintf(stderr, "ERROR: Expected %d arguments, passed %d.\n", NUM_ARGS+1, argc);
-	fprintf(stdout, "Usage: %s %s\n", argv[0], ARGS);
-        return 1;
-    }
-    
-    char *filename = argv[1];
-    xmlDoc *doc;
-        
-    doc = parseXML(filename);
-    printXML(doc);
-    
-    // TODO: Process the PCAP file.
-    
-        
-    xmlFreeDoc(doc);
-    return 0;
-}
