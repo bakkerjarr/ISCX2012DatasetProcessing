@@ -26,15 +26,18 @@
 
 #include <pcap.h>
 #include <stdio.h>
+#include <string.h>
 #include "procPcap.h"
 /* Directives for handling packets. */
-#include <arpa/inet.h> // Byte order conversion functions
+//#include <netinet/ether.h> // MAC address conversion functions
 #include <netinet/if_ether.h> // The Ethernet frame header
 
-static void processPkt(const unsigned char *rawPkt, const struct pcap_pkthdr rawHdr, const char *newMAC);
-static const char *timestamp_string(struct timeval ts);
+static void processPkt(const unsigned char *rawPkt,
+                       const struct pcap_pkthdr rawHdr,
+                       const unsigned char *newMAC);
+//static const char *timestamp_string(struct timeval ts);
 
-//static 
+static const unsigned char BROADCAST_MAC[6] = {0xff, 0xff,0xff,0xff,0xff,0xff};
 
 /**
  * Changes the destination MAC address of packets within the PCAP
@@ -47,7 +50,7 @@ static const char *timestamp_string(struct timeval ts);
  * param outputPCAP: Path of the new PCAP file.
  * return: 1 if successful, 0 otherwise.
  */
-int ppEthDst(char *inputPCAP, const char *newMAC, char *ouputPCAP){
+int ppEthDst(char *inputPCAP, const unsigned char *newMAC, char *ouputPCAP){
     char errbuf[PCAP_ERRBUF_SIZE];
     fprintf(stdout,"Opening PCAP data using file: %s\n", inputPCAP);
     pcap_t *pcap = pcap_open_offline(inputPCAP, errbuf);
@@ -59,12 +62,16 @@ int ppEthDst(char *inputPCAP, const char *newMAC, char *ouputPCAP){
     const unsigned char *pkt;
     struct pcap_pkthdr header;
     int i = 0;
+    int times = 100000;
     while ((pkt = pcap_next(pcap, &header)) != NULL) {
-        fprintf(stdout, "Packet timestamp: %s\n", timestamp_string(header.ts));
-        i++;
-        if (i == 9)
-           break;
-        processPkt(pkt, header, newMAC);
+        //fprintf(stdout, "Packet timestamp: %s\n", timestamp_string(header.ts));
+        const struct ether_header *eth = (struct ether_header*) pkt;
+        /* Replace the destination MAC address if needed */
+        ++i;
+        if (i == 21)
+            break;
+        if (i%times == 0)
+            fprintf(stdout, "Processed %d packets.\n", i);
         // TODO: Write it to the new PCAP file.
     }
     
@@ -82,7 +89,8 @@ int ppEthDst(char *inputPCAP, const char *newMAC, char *ouputPCAP){
  * param newMAC: MAC to overwrite with.
  */
 static void processPkt(const unsigned char *rawPkt, 
-                      const struct pcap_pkthdr rawHdr, const char *newMAC){
+                      const struct pcap_pkthdr rawHdr,
+                      const unsigned char *newMAC){
     const unsigned char *pkt = rawPkt;
     struct pcap_pkthdr hdr = rawHdr;
     /* The packet should be larger than the Ethernet header. */
@@ -91,8 +99,10 @@ static void processPkt(const unsigned char *rawPkt,
     }    
     const struct ether_header *eth = (struct ether_header*) pkt;
     /* Replace the destination MAC address if needed */
-    if (eth->ether_dhost);
-    // TODO: How to best check the MAC address? Compare with a hex variable? What is the byte ordering of MAC addresses?
+    const unsigned char *dmac = eth->ether_dhost;
+    if (strcmp(dmac, BROADCAST_MAC) != 0){
+        strcpy(dmac, newMAC);
+    }
 }
 
 /**
@@ -102,9 +112,9 @@ static void processPkt(const unsigned char *rawPkt,
  * Note: this routine returns a pointer into a static buffer, and
  * so each call overwrites the value returned by the previous call.
  */
-static const char *timestamp_string(struct timeval ts){
+/*static const char *timestamp_string(struct timeval ts){
     static char timestamp_string_buf[256];
     sprintf(timestamp_string_buf, "%d.%06d", (int) ts.tv_sec,
             (int) ts.tv_usec);
     return timestamp_string_buf;
-}
+}*/

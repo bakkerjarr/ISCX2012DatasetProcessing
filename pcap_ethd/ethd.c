@@ -50,13 +50,13 @@ int main (int argc, char * argv[]){
         return 1;
     }
     
-    char *mac = argv[1];
-    if (!ether_aton(mac)){
-        fprintf(stderr, "Error: %s is not a valid MAC address.\n", mac);
+    struct ether_addr *macStruct = ether_aton(argv[1]);
+    if (!macStruct){
+        fprintf(stderr, "Error: %s is not a valid MAC address.\n", argv[1]);
         return 1;
     }
+    unsigned char *mac = macStruct->ether_addr_octet;
     
-    // TODO: Process the PCAP file.
     char *inputPCAP = argv[2];
     char *outputPCAP = "NOTHING!\0";
     

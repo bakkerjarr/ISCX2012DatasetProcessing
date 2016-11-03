@@ -26,6 +26,6 @@
 #ifndef PROCPCAP_H
 #define PROCPCAP_H
 
-int ppEthDst(char *inputPCAP, const char *newMAC, char *ouputPCAP);
+int ppEthDst(char *inputPCAP, const unsigned char *newMAC, char *ouputPCAP);
 
 #endif
