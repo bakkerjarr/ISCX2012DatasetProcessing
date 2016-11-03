@@ -27,15 +27,12 @@
 #include <pcap.h>
 #include <stdio.h>
 #include <string.h>
-#include "procPcap.h"
-/* Directives for handling packets. */
-//#include <netinet/ether.h> // MAC address conversion functions
 #include <netinet/if_ether.h> // The Ethernet frame header
+#include "procPcap.h"
 
 static void processPkt(const unsigned char *rawPkt,
-                       const struct pcap_pkthdr rawHdr,
+                       const struct pcap_pkthdr *rawHdr,
                        const unsigned char *newMAC);
-//static const char *timestamp_string(struct timeval ts);
 
 static const unsigned char BROADCAST_MAC[6] = {0xff, 0xff,0xff,0xff,0xff,0xff};
 
@@ -50,31 +47,36 @@ static const unsigned char BROADCAST_MAC[6] = {0xff, 0xff,0xff,0xff,0xff,0xff};
  * param outputPCAP: Path of the new PCAP file.
  * return: 1 if successful, 0 otherwise.
  */
-int ppEthDst(char *inputPCAP, const unsigned char *newMAC, char *ouputPCAP){
+int ppEthDst(char *inputPCAP, const unsigned char *newMAC, char *outputPCAP){
     char errbuf[PCAP_ERRBUF_SIZE];
     fprintf(stdout,"Opening PCAP data using file: %s\n", inputPCAP);
-    pcap_t *pcap = pcap_open_offline(inputPCAP, errbuf);
-    if (pcap == NULL) {
+    pcap_t *pcapIn = pcap_open_offline(inputPCAP, errbuf);
+    if (pcapIn == NULL) {
         fprintf(stderr, "ERROR: PCAP error: %s\n", errbuf);
         return 0;
     }
+    fprintf(stdout,"Opening output PCAP data using file: %s\n", outputPCAP);
+    pcap_t *pcapFormat = pcap_open_dead(DLT_EN10MB, 65535);
+    pcap_dumper_t * pcapOut = pcap_dump_open(pcapFormat, outputPCAP);
     
     const unsigned char *pkt;
-    struct pcap_pkthdr header;
+    struct pcap_pkthdr *header;
     int i = 0;
     int times = 100000;
-    while ((pkt = pcap_next(pcap, &header)) != NULL) {
-        //fprintf(stdout, "Packet timestamp: %s\n", timestamp_string(header.ts));
-        const struct ether_header *eth = (struct ether_header*) pkt;
-        /* Replace the destination MAC address if needed */
+    while ((pkt = pcap_next(pcapIn, header)) != NULL) {
+        /* Replace the destination MAC address if needed. */
+        processPkt(pkt, header, newMAC);
+        /* Write the packet to the new PCAP file. */
+        pcap_dump(pcapOut, header, pkt);
+        /* Output a message to stdout every now and then. */
         ++i;
-        if (i == 21)
-            break;
         if (i%times == 0)
-            fprintf(stdout, "Processed %d packets.\n", i);
-        // TODO: Write it to the new PCAP file.
+            fprintf(stdout, "\tProcessed %d packets.\n", i);
     }
-    
+    /* Close PCAP files etc */
+    pcap_close(pcapIn);
+    pcap_dump_close(pcapOut);
+    pcap_close(pcapFormat);
     return 1;   
 }
 
@@ -89,12 +91,12 @@ int ppEthDst(char *inputPCAP, const unsigned char *newMAC, char *ouputPCAP){
  * param newMAC: MAC to overwrite with.
  */
 static void processPkt(const unsigned char *rawPkt, 
-                      const struct pcap_pkthdr rawHdr,
-                      const unsigned char *newMAC){
+                       const struct pcap_pkthdr *rawHdr,
+                       const unsigned char *newMAC){
     const unsigned char *pkt = rawPkt;
-    struct pcap_pkthdr hdr = rawHdr;
+    struct pcap_pkthdr *hdr = rawHdr;
     /* The packet should be larger than the Ethernet header. */
-    if (hdr.caplen < sizeof(struct ether_header)){
+    if (hdr->caplen < sizeof(struct ether_header)){
         return;
     }    
     const struct ether_header *eth = (struct ether_header*) pkt;
@@ -104,17 +106,3 @@ static void processPkt(const unsigned char *rawPkt,
         strcpy(dmac, newMAC);
     }
 }
-
-/**
- * This function has been adapted from: 
- * http://inst.eecs.berkeley.edu/~ee122/fa07/projects/p2files/packet_parser.c
- * 
- * Note: this routine returns a pointer into a static buffer, and
- * so each call overwrites the value returned by the previous call.
- */
-/*static const char *timestamp_string(struct timeval ts){
-    static char timestamp_string_buf[256];
-    sprintf(timestamp_string_buf, "%d.%06d", (int) ts.tv_sec,
-            (int) ts.tv_usec);
-    return timestamp_string_buf;
-}*/

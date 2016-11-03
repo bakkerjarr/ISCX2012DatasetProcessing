@@ -58,7 +58,7 @@ int main (int argc, char * argv[]){
     unsigned char *mac = macStruct->ether_addr_octet;
     
     char *inputPCAP = argv[2];
-    char *outputPCAP = "NOTHING!\0";
+    char *outputPCAP = argv[3];
     
     if (!ppEthDst(inputPCAP, mac, outputPCAP)){
        fprintf(stderr, "Error: PCAP processing failed.\n");
