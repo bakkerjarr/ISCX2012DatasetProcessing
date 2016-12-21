@@ -104,9 +104,8 @@ class ISCXSplit:
         for flow in root:
             flow_data = {}
             for i in range(len(flow)):
-                if flow[i].tag != "Tag":
-                    flow_data[flow[i].tag] = flow[i].text
-                else:
+                flow_data[flow[i].tag] = flow[i].text
+                if flow[i].tag == "Tag":
                     if flow[i].text == "Normal":
                         labels.append(TagValue.Normal)
                     else:
