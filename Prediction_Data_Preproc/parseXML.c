@@ -157,7 +157,7 @@ static Flow ** extractFlows(xmlDoc *doc, int numFlows){
             else if(!strcmp(gchNode->name, IP_DST))
                 strcpy(newFlow->destination, key);
             else if(!strcmp(gchNode->name, TP_PROTO)){
-                /* Modify the transport string if it necessary. */
+                /* Modify the transport string if necessary. */
                 if (!strcmp(key, ICMP))
                     strcpy(newFlow->protocolName, "icmp");
                 else if (!strcmp(key, TCP))
@@ -178,12 +178,9 @@ static Flow ** extractFlows(xmlDoc *doc, int numFlows){
                 struct tm t;
                 strptime(key, "%Y-%m-%dT%H:%M:%S", &t);
                 newFlow->stopTimeStamp = mktime(&t);
-            } else if (!strcmp(gchNode->name, TAG)){
-                if (!strcmp(key, TAG_NORMAL))
-                    newFlow->actualTag = Normal;
-                else
-                    newFlow->actualTag = Attack;
-            } else;
+            } else if (!strcmp(gchNode->name, TAG))
+				stpcpy(newFlow->actualTag, key);
+            else;
             xmlFree(key);
         }
         flows[i] = newFlow;

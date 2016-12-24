@@ -32,7 +32,7 @@
 #include "parseXML.h"
 
 static const char *ARGS = "<XML testing set file> <input predicted CSV> <output result CSV>";
-static const int NUM_ARGS = 1; // No. of extra args that are expected
+static const int NUM_ARGS = 2; // No. of extra args that are expected
 
 int main (int argc, char * argv[]){
     
@@ -46,13 +46,18 @@ int main (int argc, char * argv[]){
     char *xml_filename = argv[1];
     
     int numFlows = 0;
-    Flow ** flows = parseXML(xml_filename, &numFlows);
+    Flow **flows = parseXML(xml_filename, &numFlows);
     
-    // TODO: Process the predicted flow values.
-    char *input_csv = argv[2];
-    char *output_csv = "NOTHING!\0";
+    char *inputCSV = argv[2];
+    char *outputCSV = "NOTHING!\0";
+	
+	int success = procFlowPred(inputCSV, outputCSV, flows, numFlows);
 
     freeFlows(flows, numFlows);
+	
+	if (!success)
+		return 1;
     
+	fprintf(stdout, "Closing program...");
     return 0;
 }

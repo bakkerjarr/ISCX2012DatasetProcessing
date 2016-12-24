@@ -23,12 +23,6 @@
 **/
 #ifndef PROCPREDS_H
 #define PROCPREDS_H
-
-typedef enum {
-    Nothing = -1, // No predicted value was found. Init to this.
-    Normal = 0,
-    Attack = 1
-} Tag;
          
 /* A struct that identifies the actual class (Tag) for a flow. */
 typedef struct {
@@ -39,11 +33,12 @@ typedef struct {
     int destinationPort;
     int startTimeStamp;
     int stopTimeStamp;
-    Tag actualTag;
-    Tag predictedTag;  
+    char actualTag[7];
+    char predictedTag[8]; 
 } Flow;
 
 Flow * procNewFlow();
+int procFlowPred(char *inputCSV, char *outputCSV, Flow **flows, int numFlows);
 void printFlow(Flow * flow);
 
 #endif

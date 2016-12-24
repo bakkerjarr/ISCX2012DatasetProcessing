@@ -42,6 +42,8 @@
 /* XML values for the Tag attribute */
 #define TAG_ATTACK "Attack"
 #define TAG_NORMAL "Normal"
+/* An extra tag value for processing purposes */
+#define TAG_NOTHING "Nothing"
 
 #include "procPreds.h"
 

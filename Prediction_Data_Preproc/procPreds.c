@@ -25,7 +25,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "parseXML.h"
 #include "procPreds.h"
+
+static const int LINE_ITEMS = 12;
 
 /**
  * Create a new Flow struct and initialise required members.
@@ -33,14 +36,70 @@
  * return: Pointer to a Flow struct.
  */
 Flow * procNewFlow(){
-    Flow * f = malloc(sizeof(Flow));
-    memset(f, 0, sizeof(Flow));
+    Flow * f = calloc(1, sizeof(Flow));
     if (f == NULL) {
         fprintf(stderr, "ERROR: malloc failed for new Flow struct.\n");
         exit(1);
     }
-    f->predictedTag = Nothing;
+    strcpy(f->predictedTag, TAG_NOTHING);
     return f;
+}
+
+// TODO: Split each line using strtok() and store the tokens into an array (http://stackoverflow.com/a/15472429 and http://stackoverflow.com/a/15472359)
+
+/**
+ * Loop through the lines in a CSV file containing predictions on a
+ * per-packet basis and determine the predicted class for each flow.
+ * The results are written to a separate CSV file.
+ *
+ * Note: The predicted class for each flow is the late prediction for
+ * each flow.
+ *
+ * param inputCSV: CSV file containing per-packet predictions.
+ * param outputCSV: CSV file to write per-flow predictions to.
+ * param flows: Array of testing set flows.
+ * param numFlows: Number of flows in the array.
+ * return: 1 if successful, 0 otherwise.
+ */
+int procFlowPred(char *inputCSV, char *outputCSV, Flow **flows, int numFlows){
+	FILE *f;
+    char *line = NULL;
+    size_t bufLen = 0;
+    size_t read;
+	
+	/* Open the input CSV file. */
+	f = fopen(inputCSV, "r");
+    if (f == NULL) {
+		fprintf(stderr, "ERROR: Unable to open input CSV file %s\n", inputCSV);
+		return 0;
+	}
+	
+	/* Loop through and process each line in the input CSV file. */
+	int i;
+	int goes = 0;
+	char *p;
+	char *items[LINE_ITEMS];
+	while ((read = getline(&line, &bufLen, f)) != -1) {
+		/* Parse the comma-separated line into an array. */
+		p = strtok(line, ",");
+		i = 0;
+		while (p != NULL){
+			items[i++] = p;
+			p = strtok(NULL, ",");
+		}
+		
+		/* TODO: Find the matching flow for this packet and record the */
+		/* 		 predicted value into the struct. */
+
+		/* For testing: stop early! */
+		if (goes > 3)
+			break;
+		++goes;
+	}
+
+	free(line);
+	
+	return 1;
 }
 
 /**
@@ -57,6 +116,6 @@ void printFlow(Flow * flow){
     fprintf(stdout, "\tdestinationPort: %d\n", flow->destinationPort);
     fprintf(stdout, "\tstartTimeStamp: %d\n", flow->startTimeStamp);
     fprintf(stdout, "\tstopTimeStamp: %d\n", flow->stopTimeStamp);
-    fprintf(stdout, "\tactualTag: %d\n", flow->actualTag);
-    fprintf(stdout, "\tpredictedTag: %d\n", flow->predictedTag);
+    fprintf(stdout, "\tactualTag: %s\n", flow->actualTag);
+    fprintf(stdout, "\tpredictedTag: %s\n", flow->predictedTag);
 }
