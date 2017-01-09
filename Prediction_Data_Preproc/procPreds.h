@@ -23,6 +23,23 @@
 **/
 #ifndef PROCPREDS_H
 #define PROCPREDS_H
+
+#include <glib.h>
+
+typedef enum {
+	i_DT_NOW,
+	i_PKT_TS,
+	i_IPA,
+	i_IPB,
+	i_PROTO,
+	i_TPA,
+	i_TPB,
+	i_CLIENT,
+	i_SERVER,
+	i_DUR_PROC,
+	i_DUR_WALL,
+	i_PRED
+} itemPositions;
          
 /* A struct that identifies the actual class (Tag) for a flow. */
 typedef struct {
@@ -38,7 +55,7 @@ typedef struct {
 } Flow;
 
 Flow * procNewFlow();
-int procFlowPred(char *inputCSV, char *outputCSV, Flow **flows, int numFlows);
+int procFlowPred(char *inputCSV, char *outputCSV, GHashTable *flows, int numFlows);
 void printFlow(Flow * flow);
 
 #endif

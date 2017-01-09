@@ -45,9 +45,12 @@
 /* An extra tag value for processing purposes */
 #define TAG_NOTHING "Nothing"
 
+#include <glib.h>
+
 #include "procPreds.h"
 
-void freeFlows(Flow **flows, int numFlows);
-Flow ** parseXML(char *filename, int * numFlows);
+void freeFlows(GHashTable *flows);
+GHashTable * parseXML(char *filename, int * numFlows);
+char * predictable_5tuple(char *ipSrc, char *ipDst, char *proto, int tpSrc, int tpDst);
 
 #endif

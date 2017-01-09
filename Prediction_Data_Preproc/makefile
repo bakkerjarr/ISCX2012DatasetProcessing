@@ -21,8 +21,8 @@
 
 # Define variables for compilation
 CC = gcc
-CFLAGS = -Wall $(shell xml2-config --cflags)
-LIBS = $(shell xml2-config --libs)
+CFLAGS = -Wall $(shell xml2-config --cflags) $(shell pkg-config --cflags glib-2.0)
+LIBS = $(shell xml2-config --libs) $(shell pkg-config --libs glib-2.0)
 #DEPS = parseXML.h
 SRC = datapp.c parseXML.c procPreds.c
 OBJ = $(SRC:.c=.o)

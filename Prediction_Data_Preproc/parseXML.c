@@ -33,38 +33,71 @@ static const char *XML_ENCODING = "UTF-8";
 
 static int cleanDoc(xmlDoc *doc);
 static void printXML(xmlDoc *doc);
-static Flow ** extractFlows(xmlDoc *doc, int numFlows);
+static GHashTable * extractFlows(xmlDoc *doc);
+static void freeGSLists(gpointer key, gpointer value, gpointer data);
 
 /**
  * Parse an XML file.
  * 
  * param filename: String representing the path of the XML file.
  * param numFlows: Used to store the number of flows that are read in.
- * return: xmlDoc representing the loaded XML file.
+ * return: Pointer to a GHashTable.
  */
-Flow ** parseXML(char *filename, int * numFlows){
+GHashTable * parseXML(char *filename, int * numFlows){
     xmlDoc *doc;
     fprintf(stdout,"Reading XML data from file: %s\n", filename);
     doc = xmlReadFile(filename, XML_ENCODING, 0);
     *numFlows = cleanDoc(doc);
-    Flow **flows = extractFlows(doc, *numFlows);    
+    GHashTable *flows = extractFlows(doc);
     xmlFreeDoc(doc);
+	fprintf(stdout,"Data successfully read from file: %s\n", filename);
     return flows;
 }
 
 /**
  * Free the contents of the array of Flow structs.
  *
- * param flows: Array of pointer to Flow structs.
+ * param flows: GHashTable containing the flows.
  */
-void freeFlows(Flow **flows, int numFlows){
-    fprintf(stdout, "Cleaning up flow array... ");
-    int i;
-    for (i = 0; i < numFlows; ++i){
-        free(flows[i]);
-    }
-    free(flows);
+void freeFlows(GHashTable *flows){
+    fprintf(stdout, "Cleaning up flow hash table... ");
+	g_hash_table_foreach(flows, freeGSLists, NULL);
+	g_hash_table_destroy(flows);
     fprintf(stdout, "COMPLETE!\n");
+}
+
+/**
+ * Generate a predictable string to be used as a hash in a GHashTable.
+ *
+ * param ipSrc: Source IP address as a string.
+ * param ipDst: Destination IP address as a string.
+ * param proto: Transport Protocol as an int.
+ * param tpSrc: Source port number as an int.
+ * param tpDst: Destination port number as a string.
+ * return: String.
+ */
+char * predictable_5tuple(char *ipSrc, char *ipDst, char *proto,
+						  int tpSrc, int tpDst){
+	int direction = 0;
+    if (strcmp(ipSrc,ipDst) > 0)
+        direction = 1;
+    else if (strcmp(ipSrc,ipDst) < 0)
+        direction = 2;
+	else if (tpSrc > tpDst)
+        direction = 1;
+	else if (tpSrc < tpDst)
+        direction = 2;
+    else
+        direction = 1;
+	
+	char *result = (char*)calloc(1, 50 * sizeof(char)); // This should be large enough!
+	
+    if (direction == 1)
+		sprintf(result, "%s %s %s %d %d", ipSrc, ipDst, proto, tpSrc, tpDst);
+    else
+        sprintf(result, "%s %s %s %d %d", ipDst, ipSrc, proto, tpDst, tpSrc);
+	
+	return result;
 }
 
 /**
@@ -89,7 +122,6 @@ static void printXML(xmlDoc *doc){
             fprintf(stdout, "\t\tGrandchild is <%s>: %s\n", gchNode->name, key);
             xmlFree(key);
         }
-        break;
     }
     fprintf(stdout, "COMPLETED. There are %d children.\n", i);
 }
@@ -131,22 +163,21 @@ static int cleanDoc(xmlDoc *doc){
 }
 
 /**
- * Given an XML document, extract desired flow information into an
- * array of struct.
+ * Given an XML document, extract desired flow information into a
+ * GHashTable. The GHashTable compromises of a network 5-tuple as
+ * the key and a list of Flow struct pointers as the value.
  *
  * param doc: xmlDoc containing flow data.
- * param numFlows: The number of flows that are being processed.
- * return: Pointer to an array of Flow structs.
+ * return: Pointer to a GHashTable.
  */
-static Flow ** extractFlows(xmlDoc *doc, int numFlows){
-    Flow **flows = calloc(numFlows, sizeof(Flow*));
+static GHashTable * extractFlows(xmlDoc *doc){
+	GHashTable *flows = g_hash_table_new(g_str_hash, g_str_equal);
     Flow *newFlow;
     xmlNode *root, *firstChild, *node, *firstGchild, *gchNode;
     
     root = xmlDocGetRootElement(doc);
     firstChild = root->children;
     
-    int i = 0;
     for (node = firstChild; node; node = node->next) {
         firstGchild = node -> children;
         newFlow = procNewFlow();
@@ -183,8 +214,28 @@ static Flow ** extractFlows(xmlDoc *doc, int numFlows){
             else;
             xmlFree(key);
         }
-        flows[i] = newFlow;
-        ++i;
+		/* Create a predictable string for identifying the flow. */
+		char *key = predictable_5tuple(newFlow->source,
+									   newFlow->destination,
+									   newFlow->protocolName,
+									   newFlow->sourcePort,
+									   newFlow->destinationPort);
+		/* This glib statement takes care of cases when the key */
+		/* already exists. */
+		g_hash_table_insert(flows, key,
+			g_slist_append(g_hash_table_lookup(flows, key), newFlow));
     }
     return flows;
+}
+
+/**
+ * Clean up a GSList contain Flow structs.
+ */
+static void freeGSLists(gpointer key, gpointer value, gpointer data){
+	GSList *iterator = NULL, *nextElem = NULL;
+    for (iterator = value; iterator; iterator = nextElem){
+        nextElem = iterator->next;
+		free(iterator->data);
+    }
+	g_slist_free(value);	
 }
