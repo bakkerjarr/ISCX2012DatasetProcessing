@@ -90,14 +90,14 @@ char * predictable_5tuple(char *ipSrc, char *ipDst, char *proto,
     else
         direction = 1;
 	
-	char *result = (char*)calloc(1, 50 * sizeof(char)); // This should be large enough!
+	char *result = (char*)calloc(1, 52 * sizeof(char)); // This should be large enough!
 	
     if (direction == 1)
 		sprintf(result, "%s %s %s %d %d", ipSrc, ipDst, proto, tpSrc, tpDst);
     else
         sprintf(result, "%s %s %s %d %d", ipDst, ipSrc, proto, tpDst, tpSrc);
-	
-	return result;
+    
+    return result;
 }
 
 /**

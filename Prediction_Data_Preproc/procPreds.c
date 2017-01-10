@@ -25,11 +25,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "parseXML.h"
 #include "procPreds.h"
 
 static const int LINE_ITEMS = 12;
-static const double PCAP_TIME_START = 1276614067;
+static const double PCAP_TIME_START = 1276552497;
 
 static int writeResults(char *outputCSV, GHashTable *flows);
 static void iteratorWriteFlow(gpointer key, gpointer value, gpointer user_data);
@@ -75,10 +76,9 @@ int procFlowPred(char *inputCSV, char *outputCSV, GHashTable *flows, int numFlow
 		fprintf(stderr, "ERROR: Unable to open input CSV file %s\n", inputCSV);
 		return 0;
 	}
-	fprintf(stdout, "Processing input CSV file...\n");
+	fprintf(stdout, "Processing input CSV file: %s\n", inputCSV);
     
 	int i;
-	int goes = 0;
 	char *p;
 	char *items[LINE_ITEMS];
 	/* Determine the difference in time between the first flow 		*/
@@ -100,8 +100,7 @@ int procFlowPred(char *inputCSV, char *outputCSV, GHashTable *flows, int numFlow
 	}
 	double capPcktStart = atof(items[i_PKT_TS]);
 	double timeDiff = capPcktStart - PCAP_TIME_START;
-	//printf("\nFirst PCAP packet:\t%.2f\nPacket capture:\t%.2f\nTime diff:\t%.2f\n\n", PCAP_TIME_START, capPcktStart, timeDiff);
-    
+
 	/* Loop through and process each line in the input CSV file. */
 	do {
 		/* Parse the comma-separated line into an array. */
@@ -116,46 +115,37 @@ int procFlowPred(char *inputCSV, char *outputCSV, GHashTable *flows, int numFlow
 		/* in order to avoid multiple conversions from a String to a */
 		/* double.*/
 		double pktTS = atof(items[i_PKT_TS]) - timeDiff;
-
-		/*int qw;
-		for (qw = 0; qw < LINE_ITEMS; ++qw)
-			if (qw == i_PKT_TS)
-				printf("%.2f |", pktTS);
-			else
-				printf("%s | ",items[qw]);
-		printf("\n");*/
 		
 		/* Find the matching flow for this packet and copy the */
 		/* predicted value into the struct. */
         char *key = predictable_5tuple(items[i_IPA], items[i_IPB],
-                                       items[i_PROTO], items[i_TPA],
-                                       items[i_TPB]);
+                                       items[i_PROTO],
+                                       strtol(items[i_TPA], NULL, 10),
+                                       strtol(items[i_TPB], NULL, 10));
         /* Skip this packet if it is not within the GHashTable. */
         if (!g_hash_table_contains(flows, key))
             continue;
+        
         /* Fetch the flows that match the key. */
         GSList *flowList = NULL, *iterator = NULL;
         flowList = g_hash_table_lookup(flows, key);
         /* Loop through the GSList of flows and find one that matches */
         /* the time period of the packet. */
         Flow *curFlow;
-        for(iterator = flowList; iterator; iterator->next){
-             curFlow = iterator->data;
+        for(iterator = flowList; iterator; iterator = iterator->next){
+            curFlow = iterator->data;
             /* Check if the packet timestamp is within the range of */
             /* the start and stop times (inclusive) of the current flow. */
-            if (curFlow->startTimeStamp <= pktTS && pktTS <= curFlow->stopTimeStamp)
-                stpcpy(curFlow->predictedTag, items[i_PRED]);
+            if ((curFlow->startTimeStamp) <= pktTS && pktTS <= (curFlow->stopTimeStamp)){
+                if (strcmp(curFlow->predictedTag, "True") != 0)
+                    stpcpy(curFlow->predictedTag, items[i_PRED]);
+            }
         }
-        
-		/* For testing: stop early! */
-		//if (goes > 3)
-		//	break;
-		++goes;
 	} while ((read = getline(&line, &bufLen, f)) != -1);
 
 	free(line);
 	fclose(f);
-	
+
 	fprintf(stdout, "Processing complete.\n");
 	return writeResults(outputCSV, flows);
 }
@@ -199,7 +189,7 @@ static int writeResults(char *outputCSV, GHashTable *flows){
 	fprintf(stdout, "Writing complete.\n");
 	return 1;
 }
-int iTest = 0;
+
 /**
  * Write the flows within a GSList (value) to a file (user_data).
  */

@@ -40,8 +40,7 @@ typedef enum {
 	i_DUR_WALL,
 	i_PRED
 } itemPositions;
-         
-/* A struct that identifies the actual class (Tag) for a flow. */
+
 typedef struct {
     char source[16];
     char destination[16];
